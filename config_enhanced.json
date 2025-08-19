@@ -1,0 +1,37 @@
+{
+  "weather": {
+    "home_city": "Shanghai",
+    "units": "metric",
+    "show_details": true,
+    "show_alerts": true
+  },
+  "finance": {
+    "enabled": true,
+    "stocks": ["SPY", "QQQ", "AAPL", "MSFT"],
+    "crypto": ["BTC-USD", "ETH-USD", "SOL-USD"]
+  },
+  "ai_briefing": {
+    "enabled": true,
+    "api_key": null,
+    "model": "claude-3-haiku-20240307"
+  },
+  "news": {
+    "sources": [
+      "https://feeds.bbci.co.uk/news/rss.xml",
+      "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+      "https://techcrunch.com/feed/"
+    ],
+    "max_headlines": 5
+  },
+  "reddit": {
+    "subreddits": ["worldnews", "technology", "science"],
+    "max_posts": 3
+  },
+  "timeout": {
+    "api_timeout": 5
+  },
+  "cache": {
+    "ttl_minutes": 15
+  },
+  "last_run_file": ".last_run"
+}
