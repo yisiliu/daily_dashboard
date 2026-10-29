@@ -1,0 +1,667 @@
+<title>能建一座圆城吗？</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 布局：左侧一张正方形规划图，右侧是控制台与指标；窄屏上下堆叠 */
+:root {
+  --bg: #ebefeb;
+  --panel: #f6f8f5;
+  --fg: #19221e;
+  --muted: #5a6760;
+  --line: #c9d1ca;
+  --accent: #1d6a73;
+  --accent-soft: #d5e6e6;
+  --warn: #a8641c;
+  --font-display: "Noto Serif SC", "Songti SC", "STSong", serif;
+  --font-body: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111614; --panel: #19201d; --fg: #e1e7e2; --muted: #93a098; --line: #2c3631;
+    --accent: #63b5bb; --accent-soft: #1f3536; --warn: #e0a256; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111614; --panel: #19201d; --fg: #e1e7e2; --muted: #93a098; --line: #2c3631;
+  --accent: #63b5bb; --accent-soft: #1f3536; --warn: #e0a256; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body);
+  font-size: 15px; line-height: 1.65;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 28px; }
+header { display: grid; gap: 10px; max-width: 760px; }
+.eyebrow { font-family: var(--font-data); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--font-display); font-weight: 900; font-size: clamp(30px, 5vw, 48px); line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 21px; margin: 0; text-wrap: balance; }
+h3 { font-size: 13px; font-weight: 600; margin: 0; color: var(--muted); letter-spacing: .06em; }
+p { margin: 0; }
+.lede { font-size: 16.5px; color: var(--fg); max-width: 66ch; }
+.lede b { color: var(--accent); font-weight: 600; }
+
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; }
+@media (max-width: 880px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+
+.map { display: grid; gap: 10px; min-width: 0; }
+.map canvas { width: 100%; max-width: 100%; aspect-ratio: 1; display: block; border-radius: 6px; cursor: crosshair; background: #c9d6b5; }
+.map canvas:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.hint { font-size: 13px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; border: 1px solid rgba(0,0,0,.15); }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; gap: 18px; min-width: 0; }
+.group { display: grid; gap: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+button {
+  font: inherit; font-size: 13px; color: var(--fg); background: transparent;
+  border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+button.primary:hover { color: var(--panel); filter: brightness(1.08); }
+.ctl { display: grid; gap: 2px; }
+.ctl label { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; }
+.ctl output { font-family: var(--font-data); font-size: 12.5px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.ctl input[type=range] { width: 100%; accent-color: var(--accent); }
+.ends { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); }
+.check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+.divider { height: 1px; background: var(--line); }
+
+.verdict { font-size: 14.5px; line-height: 1.6; padding: 12px 14px; border-radius: 6px; background: var(--accent-soft); }
+.verdict b { font-weight: 600; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: right; padding: 5px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; color: var(--muted); font-weight: 400; }
+thead th { font-size: 11.5px; color: var(--muted); font-weight: 500; letter-spacing: .04em; }
+td { font-family: var(--font-data); font-size: 12.5px; padding-left: 8px; }
+td.cur { color: var(--fg); font-weight: 500; }
+td.base { color: var(--muted); }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px; }
+.notes section { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.notes ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.history { display: grid; gap: 12px; }
+.history div { display: grid; grid-template-columns: 64px 1fr; gap: 10px; }
+.history .yr { font-family: var(--font-data); font-size: 13px; color: var(--accent); padding-top: 2px; }
+.small { font-size: 13.5px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">城市形态实验 · 平原上的圆</div>
+    <h1>能建一座正圆的城市吗？</h1>
+    <p class="lede">几何上完全可以。在平坦、无水的地上，圆是最“省路”的形状：同样的面积，居民到市中心的平均直线距离比正方形城市短约 2%。难处在于代价：<b>一旦有河、湖、山，正圆就得靠桥、填水和削山来维持</b>。拖动「顺应地形」滑块，看看在“坚持正圆”和“让城市自己长”之间如何取舍。</p>
+  </header>
+
+  <div class="stage">
+    <div class="map">
+      <canvas id="map" tabindex="0" aria-label="城市规划模拟图：点击设置市中心"></canvas>
+      <p class="hint">点击地图移动市中心（也可聚焦地图后用方向键）。地图范围 20 × 20 km，每格 100 m。</p>
+      <div class="legend">
+        <span><i style="background:#2b3550"></i>核心区</span>
+        <span><i style="background:#4a5878"></i>内城</span>
+        <span><i style="background:#7584a5"></i>外城</span>
+        <span><i style="background:#5f8a5a"></i>公园</span>
+        <span><i style="background:#f3eee4"></i>环路 / 放射大道</span>
+        <span><i style="background:#e8b43c"></i>桥梁 / 堤</span>
+        <span><i style="background:#c9772e"></i>填水造地</span>
+        <span><i style="background:#8e5a7a"></i>削山平整</span>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div class="group">
+        <h3>场景</h3>
+        <div class="chips">
+          <button data-preset="plain">纯平原</button>
+          <button data-preset="river">穿城大河</button>
+          <button data-preset="lakes">湖区</button>
+          <button data-preset="mountain">山前平原</button>
+          <button id="reseed">换一块地</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>地形</h3>
+        <div class="ctl"><label for="mount">山地比例 <output id="mountV"></output></label><input type="range" id="mount" min="0" max="1" step="0.05"></div>
+        <div class="ctl"><label for="lakes">湖泊数量 <output id="lakesV"></output></label><input type="range" id="lakes" min="0" max="5" step="1"></div>
+        <div class="ctl"><label for="rivers">河流数量 <output id="riversV"></output></label><input type="range" id="rivers" min="0" max="2" step="1"></div>
+      </div>
+
+      <div class="group">
+        <h3>城市</h3>
+        <div class="ctl"><label for="pop">人口 <output id="popV"></output></label><input type="range" id="pop" min="20" max="250" step="5"></div>
+        <div class="ctl">
+          <label for="alpha">顺应地形 <output id="alphaV"></output></label>
+          <input type="range" id="alpha" min="0" max="1" step="0.05">
+          <div class="ends"><span>严格正圆</span><span>自然生长</span></div>
+        </div>
+        <label class="check"><input type="checkbox" id="engineer">工程改造：填平水面、削平陡坡</label>
+        <label class="check"><input type="checkbox" id="refCircle">显示同面积正圆</label>
+        <div><button class="primary" id="play">播放生长过程</button></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="group">
+        <h3>结果</h3>
+        <p class="verdict" id="verdict"></p>
+        <table>
+          <thead><tr><th></th><th>当前方案</th><th>严格正圆</th></tr></thead>
+          <tbody id="metrics"></tbody>
+        </table>
+      </div>
+    </aside>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>模型怎么算的</h2>
+      <ul class="small">
+        <li>人口按每平方公里 1 万人换算成用地面积。</li>
+        <li>每块地有两种“离市中心多远”：直线距离，和考虑坡度、过河成本后的实际出行成本。</li>
+        <li>「顺应地形」在两者之间插值。城市从中心按这个距离由近到远占地，直到装下全部人口。0 就是正圆，1 就是沿着最好走的方向生长。</li>
+        <li>水面和坡度超过 25% 的地不能盖楼，除非打开工程改造。</li>
+        <li>环路是这个距离的等值线，放射大道沿距离下降最快的方向通向中心；路过水面的地方记作桥或堤。</li>
+      </ul>
+    </section>
+    <section>
+      <h2>圆城为什么难以维持</h2>
+      <ul class="small">
+        <li><b>河流</b>：大城市几乎都靠水建，而正圆的每条环路都要跨河，桥的数量随环数成倍增长。</li>
+        <li><b>山地</b>：25% 以上的坡地盖楼代价很高，圆的一侧撞上山就只能削山或留空。</li>
+        <li><b>增长</b>：圆的边界是一次性画定的，人口超出后新城区会沿交通线向外伸，形状变成星形。</li>
+        <li><b>交通</b>：所有放射路在中心汇合，市中心最容易拥堵。</li>
+      </ul>
+    </section>
+    <section>
+      <h2>历史上的圆城</h2>
+      <div class="history small">
+        <div><span class="yr">762</span><span>巴格达“圆城”：阿拔斯王朝哈里发曼苏尔在底格里斯河西岸建造，城墙为同心圆，四座城门。城市后来扩张到河对岸，圆形没有保留下来。</span></div>
+        <div><span class="yr">1593</span><span>帕尔马诺瓦（意大利）：威尼斯共和国建的九角星形要塞城，至今保持原样，人口只有几千。</span></div>
+        <div><span class="yr">1715</span><span>卡尔斯鲁厄（德国）：以宫殿塔楼为圆心的扇形放射街道，后来的新城区回到了方格网。</span></div>
+        <div><span class="yr">1921</span><span>纳哈拉勒（以色列）：农业合作村，住宅排成一圈，田地向外放射。规模小，才保住了圆。</span></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+const N = 200;                 // 网格 200×200，每格 100 m
+const GMAX = 0.25;             // 可建设的最大坡度
+const BRIDGE = 6;              // 过水的出行成本倍数
+const S = { mount: 0.3, lakes: 2, rivers: 1, pop: 80, alpha: 0, engineer: false, ref: true, riverCenter: false };
+let seed = 11, cx = N >> 1, cy = N >> 1;
+
+// ---------- 随机与噪声 ----------
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hash(x, y, s) { let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 982451653)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+function vnoise(x, y, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash(xi, yi, s), b = hash(xi + 1, yi, s), c = hash(xi, yi + 1, s), d = hash(xi + 1, yi + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, y, s, oct) { let f = 0, amp = 0.5, fr = 1, norm = 0; for (let i = 0; i < oct; i++) { f += amp * vnoise(x * fr, y * fr, s + i * 101); norm += amp; amp *= 0.5; fr *= 2; } return f / norm; }
+function ridged(x, y, s, oct) { let f = 0, amp = 0.5, fr = 1, norm = 0; for (let i = 0; i < oct; i++) { const r = 1 - Math.abs(2 * vnoise(x * fr, y * fr, s + i * 57) - 1); f += amp * r * r; norm += amp; amp *= 0.5; fr *= 2; } return f / norm; }
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+// ---------- 地形 ----------
+let H, W, G, C, CR;
+function genTerrain() {
+  H = new Float32Array(N * N); W = new Uint8Array(N * N); G = new Float32Array(N * N); C = new Float32Array(N * N); CR = new Float32Array(N * N);
+  const M = new Float32Array(N * N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const nx = x / N, ny = y / N, i = y * N + x;
+    let h = fbm(nx * 5, ny * 5, seed, 4) * 0.1, m = 0;
+    if (S.mount > 0) {
+      const thr = 0.7 - S.mount * 0.36;
+      m = smooth(thr, thr + 0.12, fbm(nx * 1.7 + 3.1, ny * 1.7 + 7.7, seed + 77, 3));
+    }
+    h += m * (0.25 + 0.75 * ridged(nx * 6, ny * 6, seed + 313, 4)) * 0.95;
+    H[i] = h; M[i] = m;
+  }
+  // 湖泊
+  const rl = mulberry32(seed * 9973 + 11);
+  for (let k = 0; k < S.lakes; k++) {
+    let lx, ly, tries = 0;
+    do { lx = 15 + rl() * (N - 30); ly = 15 + rl() * (N - 30); tries++; } while (M[(ly | 0) * N + (lx | 0)] > 0.2 && tries < 40);
+    const r = 6 + rl() * 12;
+    for (let y = Math.max(0, ly - r * 1.6 | 0); y < Math.min(N, ly + r * 1.6); y++)
+      for (let x = Math.max(0, lx - r * 1.6 | 0); x < Math.min(N, lx + r * 1.6); x++) {
+        const i = y * N + x, dd = Math.hypot(x - lx, y - ly) / r;
+        if (M[i] < 0.5 && dd < 1 + (fbm(x * 0.07, y * 0.07, seed + 500 + k * 37, 3) - 0.5) * 1.4) W[i] = 1;
+      }
+  }
+  // 河流：过一个锚点，向两头蜿蜒流出地图
+  const rr = mulberry32(seed * 7919 + 3);
+  for (let k = 0; k < S.rivers; k++) {
+    const through = S.riverCenter && k === 0;
+    const tx = through ? N / 2 + 7 : N / 2 + (rr() - 0.5) * N * 0.6;
+    const ty = through ? N / 2 + 4 : N / 2 + (rr() - 0.5) * N * 0.6;
+    const base = rr() * Math.PI, width = k === 0 ? 2.0 : 1.5;
+    for (const dir of [0, Math.PI]) {
+      let x = tx, y = ty, th = base + dir;
+      const b = base + dir;
+      for (let st = 0; st < 3000; st++) {
+        for (let yy = Math.floor(y - width); yy <= y + width; yy++)
+          for (let xx = Math.floor(x - width); xx <= x + width; xx++)
+            if (xx >= 0 && yy >= 0 && xx < N && yy < N && Math.hypot(xx - x, yy - y) <= width) W[yy * N + xx] = W[yy * N + xx] || 2;
+        th += (vnoise(st * 0.03, k * 13.7 + dir, seed + 900) - 0.5) * 0.13 + (b - th) * 0.035;
+        x += Math.cos(th) * 0.5; y += Math.sin(th) * 0.5;
+        if (x < -3 || y < -3 || x > N + 2 || y > N + 2) break;
+      }
+    }
+  }
+  // 河谷：河流附近把山切低
+  const dist = new Int16Array(N * N).fill(99), q = [];
+  for (let i = 0; i < N * N; i++) if (W[i] === 2) { dist[i] = 0; q.push(i); }
+  for (let qi = 0; qi < q.length; qi++) {
+    const i = q[qi], x = i % N, y = (i / N) | 0;
+    if (dist[i] >= 12) continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      const j = ny * N + nx; if (dist[j] > dist[i] + 1) { dist[j] = dist[i] + 1; q.push(j); }
+    }
+  }
+  for (let i = 0; i < N * N; i++) if (dist[i] < 12) H[i] *= 0.15 + 0.85 * smooth(0, 12, dist[i]);
+  // 坡度：高度 1 ≈ 800 m，格距 100 m
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const i = y * N + x;
+    const hx = H[y * N + Math.min(N - 1, x + 1)] - H[y * N + Math.max(0, x - 1)];
+    const hy = H[Math.min(N - 1, y + 1) * N + x] - H[Math.max(0, y - 1) * N + x];
+    G[i] = Math.hypot(hx, hy) * 4;
+    C[i] = W[i] ? BRIDGE : 1 + 3 * G[i] + (G[i] > GMAX ? 60 * (G[i] - GMAX) : 0);
+    CR[i] = W[i] ? 1.5 : C[i]; // 道路距离场：过水只略贵，环路会直接跨河而不是沿岸绕
+  }
+  terrainDirty = true;
+}
+const buildable = i => W[i] === 0 && G[i] < GMAX;
+
+function snapCenter() {
+  if (buildable(cy * N + cx)) return;
+  let best = -1, bd = Infinity;
+  for (let i = 0; i < N * N; i++) if (buildable(i)) { const d = Math.hypot(i % N - cx, ((i / N) | 0) - cy); if (d < bd) { bd = d; best = i; } }
+  if (best >= 0) { cx = best % N; cy = (best / N) | 0; }
+}
+
+// ---------- 距离场 ----------
+const E = new Float64Array(N * N), T = new Float64Array(N * N), TR = new Float64Array(N * N);
+let hk = new Float64Array(1 << 19), hv = new Int32Array(1 << 19), hn = 0;
+function hpush(k, v) {
+  if (hn >= hk.length) { const k2 = new Float64Array(hk.length * 2); k2.set(hk); hk = k2; const v2 = new Int32Array(hv.length * 2); v2.set(hv); hv = v2; }
+  let i = hn++;
+  while (i > 0) { const p = (i - 1) >> 1; if (hk[p] <= k) break; hk[i] = hk[p]; hv[i] = hv[p]; i = p; }
+  hk[i] = k; hv[i] = v;
+}
+function hpop() {
+  const top = hv[0], k = hk[--hn], v = hv[hn];
+  let i = 0;
+  for (;;) { let l = 2 * i + 1; if (l >= hn) break; if (l + 1 < hn && hk[l + 1] < hk[l]) l++; if (hk[l] >= k) break; hk[i] = hk[l]; hv[i] = hv[l]; i = l; }
+  hk[i] = k; hv[i] = v; return top;
+}
+const NB = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1],[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]].map(([dx, dy]) => [dx, dy, Math.hypot(dx, dy)]);
+function computeFields() {
+  for (let i = 0; i < N * N; i++) E[i] = Math.hypot(i % N - cx, ((i / N) | 0) - cy);
+  dijkstra(C, T); dijkstra(CR, TR);
+}
+function dijkstra(C, T) {
+  T.fill(Infinity); const c0 = cy * N + cx; T[c0] = 0; hn = 0; hpush(0, c0);
+  while (hn) {
+    const k = hk[0], i = hpop(); if (k > T[i]) continue;
+    const x = i % N, y = (i / N) | 0;
+    for (const [dx, dy, len] of NB) {
+      const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      const j = ny * N + nx;
+      let c;
+      if (len < 2) c = (C[i] + C[j]) * 0.5;
+      else if (Math.abs(dy) === 2) c = (C[i] + C[j] + C[(y + dy / 2) * N + x] + C[(y + dy / 2) * N + nx]) * 0.25;
+      else c = (C[i] + C[j] + C[y * N + x + dx / 2] + C[ny * N + x + dx / 2]) * 0.25;
+      const nk = k + len * c;
+      if (nk < T[j]) { T[j] = nk; hpush(nk, j); }
+    }
+  }
+}
+
+// ---------- 生长 ----------
+function grow(alpha) {
+  const D = new Float32Array(N * N);
+  for (let i = 0; i < N * N; i++) D[i] = (1 - alpha) * E[i] + alpha * T[i];
+  const cand = [];
+  for (let i = 0; i < N * N; i++) if (S.engineer || buildable(i)) cand.push(i);
+  cand.sort((a, b) => D[a] - D[b]);
+  const A = Math.min(cand.length, Math.round(S.pop * 100));
+  const order = cand.slice(0, A);
+  const city = new Uint8Array(N * N), rank = new Int32Array(N * N).fill(-1);
+  order.forEach((i, r) => { rank[i] = r; city[i] = W[i] ? 2 : (G[i] >= GMAX ? 3 : 1); });
+
+  // 指标
+  const Req = Math.sqrt(A / Math.PI);
+  const es = new Float32Array(A); let sumE = 0, sumT = 0, filled = 0, cut = 0;
+  order.forEach((i, r) => { es[r] = E[i]; sumE += E[i]; sumT += T[i]; if (city[i] === 2) filled++; if (city[i] === 3) cut++; });
+  es.sort();
+  const R99 = es[Math.floor(A * 0.99)] || 1;
+  const seen = new Uint8Array(N * N), q = [];
+  for (let k = 0; k < N; k++) for (const i of [k, (N - 1) * N + k, k * N, k * N + N - 1]) if (!city[i] && !seen[i]) { seen[i] = 1; q.push(i); }
+  for (let qi = 0; qi < q.length; qi++) {
+    const i = q[qi], x = i % N, y = (i / N) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      const j = ny * N + nx; if (!city[j] && !seen[j]) { seen[j] = 1; q.push(j); }
+    }
+  }
+  const Afill = N * N - q.length;
+  let inC = 0, inWater = 0, inSteep = 0;
+  for (let i = 0; i < N * N; i++) if (E[i] <= Req) { inC++; if (W[i]) inWater++; else if (G[i] >= GMAX) inSteep++; }
+
+  const DR = new Float32Array(N * N);
+  for (let i = 0; i < N * N; i++) DR[i] = (1 - alpha) * E[i] + alpha * TR[i];
+  const roads = buildRoads(DR, city, order, Req);
+  return {
+    D, city, rank, order, A, Req, roads,
+    m: {
+      area: A / 100, round: Math.min(1, Afill / (Math.PI * R99 * R99)), holes: Afill ? (Afill - A) / Afill : 0,
+      meanE: A ? sumE / A * 0.1 : 0, meanT: A ? sumT / A * 0.1 : 0,
+      filled: filled / 100, cut: cut / 100, bridges: roads.bridges, r99: R99 * 0.1,
+      water: inC ? inWater / inC : 0, steep: inC ? inSteep / inC : 0, short: Math.round(S.pop * 100) - A,
+    },
+  };
+}
+
+// ---------- 道路 ----------
+function buildRoads(D, city, order, Req) {
+  const A = order.length;
+  const segs = [], bridgeSq = new Set();
+  if (A < 50) return { segs, radials: [], bridges: 0 };
+  const dr = Float32Array.from(order, i => D[i]).sort();
+  const dMax = dr[Math.floor(A * 0.97)];
+  const rings = Math.max(2, Math.min(7, Math.round(Req / 11)));
+  const roadOK = i => city[i] || W[i];
+  const wet = i => W[i] && !city[i];
+  const edgePt = (x1, y1, v1, x2, y2, v2, L) => { const t = (L - v1) / (v2 - v1); return [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t]; };
+  const CASES = { 1: [[3, 2]], 2: [[2, 1]], 3: [[3, 1]], 4: [[0, 1]], 5: [[0, 1], [3, 2]], 6: [[0, 2]], 7: [[0, 3]], 8: [[0, 3]], 9: [[0, 2]], 10: [[0, 3], [2, 1]], 11: [[0, 1]], 12: [[3, 1]], 13: [[2, 1]], 14: [[3, 2]] };
+  for (let k = 1; k < rings; k++) {
+    const L = dMax * k / rings;
+    for (let y = 0; y < N - 1; y++) for (let x = 0; x < N - 1; x++) {
+      const ia = y * N + x, ib = ia + 1, ic = ia + N + 1, id = ia + N;
+      if (!(roadOK(ia) && roadOK(ib) && roadOK(ic) && roadOK(id))) continue;
+      if (!(city[ia] || city[ib] || city[ic] || city[id])) continue;
+      const a = D[ia], b = D[ib], c = D[ic], d = D[id];
+      const cs = (a >= L ? 8 : 0) | (b >= L ? 4 : 0) | (c >= L ? 2 : 0) | (d >= L ? 1 : 0);
+      const pairs = CASES[cs]; if (!pairs) continue;
+      const e = [
+        () => edgePt(x, y, a, x + 1, y, b, L),       // 上
+        () => edgePt(x + 1, y, b, x + 1, y + 1, c, L), // 右
+        () => edgePt(x, y + 1, d, x + 1, y + 1, c, L), // 下
+        () => edgePt(x, y, a, x, y + 1, d, L),       // 左
+      ];
+      const br = wet(ia) || wet(ib) || wet(ic) || wet(id);
+      if (br) bridgeSq.add(k * N * N + ia);
+      for (const [p, r] of pairs) { const P = e[p](), Q = e[r](); segs.push(P[0], P[1], Q[0], Q[1], br ? 1 : 0); }
+    }
+  }
+  // 环路上的桥：按相连的过水格子聚类
+  let bridges = 0;
+  const done = new Set();
+  for (const key of bridgeSq) {
+    if (done.has(key)) continue;
+    bridges++; const st = [key]; done.add(key);
+    while (st.length) {
+      const kk = st.pop(), lv = Math.floor(kk / (N * N)), i = kk % (N * N), x = i % N, y = (i / N) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nk = lv * N * N + (y + dy) * N + (x + dx);
+        if (bridgeSq.has(nk) && !done.has(nk)) { done.add(nk); st.push(nk); }
+      }
+    }
+  }
+  // 放射大道：从城市边缘沿距离场下降最快方向走回中心
+  const sample = (x, y) => {
+    x = Math.max(0, Math.min(N - 1.001, x)); y = Math.max(0, Math.min(N - 1.001, y));
+    const xi = x | 0, yi = y | 0, fx = x - xi, fy = y - yi, i = yi * N + xi;
+    return D[i] * (1 - fx) * (1 - fy) + D[i + 1] * fx * (1 - fy) + D[i + N] * (1 - fx) * fy + D[i + N + 1] * fx * fy;
+  };
+  const K = Req > 45 ? 12 : 8, radials = [];
+  for (let n = 0; n < K; n++) {
+    const ang = n / K * Math.PI * 2, ux = Math.cos(ang), uy = Math.sin(ang);
+    let rEnd = 0;
+    for (let r = 1; r < N * 1.5; r += 0.5) {
+      const x = Math.round(cx + ux * r), y = Math.round(cy + uy * r);
+      if (x < 0 || y < 0 || x >= N || y >= N) break;
+      if (city[y * N + x]) rEnd = r;
+    }
+    if (rEnd < 4) continue;
+    let x = cx + ux * rEnd, y = cy + uy * rEnd, best = sample(x, y), stall = 0;
+    const pts = [[x, y]];
+    for (let st = 0; st < 2000; st++) {
+      const gx = sample(x + 0.5, y) - sample(x - 0.5, y), gy = sample(x, y + 0.5) - sample(x, y - 0.5);
+      const g = Math.hypot(gx, gy); if (g < 1e-7) break;
+      x -= gx / g * 0.5; y -= gy / g * 0.5; pts.push([x, y]);
+      if (Math.hypot(x - cx, y - cy) < 1) break;
+      const v = sample(x, y); if (v < best - 1e-4) { best = v; stall = 0; } else if (++stall > 30) break;
+    }
+    pts.push([cx, cy]);
+    const flags = pts.map(([px, py]) => wet(Math.round(py) * N + Math.round(px)));
+    for (let k2 = 1; k2 < flags.length; k2++) if (flags[k2] && !flags[k2 - 1]) bridges++;
+    radials.push({ pts, flags });
+  }
+  return { segs, radials, bridges };
+}
+
+// ---------- 绘制 ----------
+const cv = document.getElementById('map'), ctx = cv.getContext('2d');
+let cw = 0, terrainLayer = null, terrainDirty = true, cur = null, base = null, anim = null;
+function terrainColor(h) {
+  const stops = [[0, [200, 214, 178]], [0.12, [184, 200, 156]], [0.3, [168, 166, 122]], [0.55, [143, 124, 98]], [0.8, [176, 165, 150]], [1, [232, 228, 220]]];
+  for (let k = 1; k < stops.length; k++) if (h <= stops[k][0]) {
+    const [h0, c0] = stops[k - 1], [h1, c1] = stops[k], t = (h - h0) / (h1 - h0);
+    return c0.map((v, j) => v + (c1[j] - v) * t);
+  }
+  return stops[stops.length - 1][1];
+}
+function buildTerrainLayer() {
+  const small = document.createElement('canvas'); small.width = small.height = N;
+  const sc = small.getContext('2d'), img = sc.createImageData(N, N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const i = y * N + x;
+    let col;
+    if (W[i]) col = W[i] === 1 ? [118, 168, 201] : [104, 160, 199];
+    else {
+      const hx = H[y * N + Math.min(N - 1, x + 1)] - H[y * N + Math.max(0, x - 1)];
+      const hy = H[Math.min(N - 1, y + 1) * N + x] - H[Math.max(0, y - 1) * N + x];
+      const nx = -hx * 14, ny = -hy * 14, nz = 1, nl = Math.hypot(nx, ny, nz);
+      const shade = Math.max(0.55, Math.min(1.25, 0.82 + (-nx * 0.6 - ny * 0.6 + nz * 0.53 - 0.53) / nl * 1.6 + 0.18));
+      col = terrainColor(H[i]).map(v => Math.min(255, v * shade));
+    }
+    img.data.set([col[0], col[1], col[2], 255], i * 4);
+  }
+  sc.putImageData(img, 0, 0);
+  terrainLayer = document.createElement('canvas'); terrainLayer.width = terrainLayer.height = cw;
+  const tc = terrainLayer.getContext('2d');
+  tc.imageSmoothingEnabled = true; tc.imageSmoothingQuality = 'high';
+  tc.drawImage(small, 0, 0, cw, cw);
+  // 等高线
+  const s = cw / N;
+  for (let L = 0.1; L < 1; L += 0.05) {
+    tc.beginPath();
+    tc.strokeStyle = Math.round(L * 100) % 20 === 0 ? 'rgba(70,52,36,.38)' : 'rgba(70,52,36,.18)';
+    tc.lineWidth = Math.max(0.6, s * 0.16);
+    for (let y = 0; y < N - 1; y++) for (let x = 0; x < N - 1; x++) {
+      const ia = y * N + x, a = H[ia], b = H[ia + 1], c = H[ia + N + 1], d = H[ia + N];
+      if (W[ia] || W[ia + 1] || W[ia + N] || W[ia + N + 1]) continue;
+      const cs = (a >= L ? 8 : 0) | (b >= L ? 4 : 0) | (c >= L ? 2 : 0) | (d >= L ? 1 : 0);
+      if (cs === 0 || cs === 15) continue;
+      const pts = [];
+      if ((a >= L) !== (b >= L)) pts.push([x + (L - a) / (b - a), y]);
+      if ((b >= L) !== (c >= L)) pts.push([x + 1, y + (L - b) / (c - b)]);
+      if ((d >= L) !== (c >= L)) pts.push([x + (L - d) / (c - d), y + 1]);
+      if ((a >= L) !== (d >= L)) pts.push([x, y + (L - a) / (d - a)]);
+      for (let k = 0; k + 1 < pts.length; k += 2) { tc.moveTo((pts[k][0] + .5) * s, (pts[k][1] + .5) * s); tc.lineTo((pts[k + 1][0] + .5) * s, (pts[k + 1][1] + .5) * s); }
+    }
+    tc.stroke();
+  }
+  terrainDirty = false;
+}
+function blockColor(i, t) {
+  const x = i % N, y = (i / N) | 0;
+  if (cur.city[i] === 2) return '#c9772e';
+  if (cur.city[i] === 3) return '#8e5a7a';
+  if (t > 0.04 && hash(x >> 2, y >> 2, seed + 4242) < 0.06) return '#5f8a5a';
+  if (t < 0.08) return '#2b3550';
+  if (t < 0.4) return '#4a5878';
+  return '#7584a5';
+}
+function render(shown) {
+  const rect = cv.getBoundingClientRect();
+  const want = Math.min(1800, Math.round(rect.width * (window.devicePixelRatio || 1)));
+  if (want && want !== cw) { cw = cv.width = cv.height = want; terrainDirty = true; }
+  if (!cw) return;
+  if (terrainDirty) buildTerrainLayer();
+  ctx.drawImage(terrainLayer, 0, 0);
+  const s = cw / N, full = shown === undefined, A = cur.A, n = full ? A : Math.floor(shown);
+  const inset = Math.max(0.5, s * 0.1);
+  for (let r = 0; r < n; r++) {
+    const i = cur.order[r];
+    ctx.fillStyle = blockColor(i, r / A);
+    ctx.fillRect((i % N) * s + inset / 2, ((i / N) | 0) * s + inset / 2, s - inset, s - inset);
+  }
+  if (full) drawRoads(s);
+  if (S.ref && full) {
+    ctx.save(); ctx.setLineDash([s * 2, s * 1.5]); ctx.lineWidth = Math.max(1, s * 0.35); ctx.strokeStyle = 'rgba(255,255,255,.9)';
+    ctx.beginPath(); ctx.arc((cx + .5) * s, (cy + .5) * s, cur.Req * s, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
+  // 市中心
+  ctx.beginPath(); ctx.arc((cx + .5) * s, (cy + .5) * s, s * 1.6, 0, Math.PI * 2);
+  ctx.fillStyle = '#f3eee4'; ctx.fill(); ctx.lineWidth = s * 0.6; ctx.strokeStyle = '#c23b3b'; ctx.stroke();
+  // 比例尺
+  const pad = s * 4, len = 20 * s;
+  ctx.fillStyle = 'rgba(25,34,30,.72)'; ctx.fillRect(pad - s, cw - pad - s * 6, len + s * 13, s * 7);
+  ctx.fillStyle = '#f3eee4'; ctx.fillRect(pad, cw - pad - s * 2, len, s * 0.7);
+  ctx.fillRect(pad, cw - pad - s * 3, s * 0.5, s * 2.5); ctx.fillRect(pad + len - s * 0.5, cw - pad - s * 3, s * 0.5, s * 2.5);
+  ctx.font = `${Math.round(s * 3.2)}px "IBM Plex Mono", monospace`; ctx.textBaseline = 'middle';
+  ctx.fillText('2 km', pad + len + s * 2, cw - pad - s * 2.2);
+}
+function drawRoads(s) {
+  const { segs, radials } = cur.roads, P = v => (v + 0.5) * s;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const pass of [0, 1]) {
+    ctx.beginPath();
+    for (let k = 0; k < segs.length; k += 5) if (segs[k + 4] === pass) { ctx.moveTo(P(segs[k]), P(segs[k + 1])); ctx.lineTo(P(segs[k + 2]), P(segs[k + 3])); }
+    ctx.lineWidth = s * (pass ? 1.1 : 0.75); ctx.strokeStyle = pass ? '#e8b43c' : '#f3eee4'; ctx.stroke();
+  }
+  for (const { pts, flags } of radials) {
+    const sm = pts.map((p, k) => { // 平滑栅格噪声
+      let sx = 0, sy = 0, c = 0;
+      for (let j = Math.max(0, k - 3); j <= Math.min(pts.length - 1, k + 3); j++) { sx += pts[j][0]; sy += pts[j][1]; c++; }
+      return k === 0 || k === pts.length - 1 ? p : [sx / c, sy / c];
+    });
+    ctx.beginPath(); sm.forEach(([x, y], k) => k ? ctx.lineTo(P(x), P(y)) : ctx.moveTo(P(x), P(y)));
+    ctx.lineWidth = s * 1.1; ctx.strokeStyle = '#f3eee4'; ctx.stroke();
+    ctx.beginPath();
+    for (let k = 1; k < sm.length; k++) if (flags[k] || flags[k - 1]) { ctx.moveTo(P(sm[k - 1][0]), P(sm[k - 1][1])); ctx.lineTo(P(sm[k][0]), P(sm[k][1])); }
+    ctx.lineWidth = s * 1.5; ctx.strokeStyle = '#e8b43c'; ctx.stroke();
+  }
+}
+
+// ---------- 指标与结论 ----------
+const pct = v => Math.round(v * 100) + '%', km = v => v.toFixed(1);
+function report() {
+  const a = cur.m, b = base.m;
+  const rows = [
+    ['城市面积', a.area.toFixed(0) + ' km²', b.area.toFixed(0) + ' km²'],
+    ['轮廓圆度', pct(a.round), pct(b.round)],
+    ['内部空洞', pct(a.holes), pct(b.holes)],
+    ['到中心平均直线距离', km(a.meanE) + ' km', km(b.meanE) + ' km'],
+    ['平均实际出行成本', km(a.meanT) + ' km', km(b.meanT) + ' km'],
+    ['桥梁 / 堤', a.bridges + ' 座', b.bridges + ' 座'],
+    ['填水造地', a.filled.toFixed(1) + ' km²', b.filled.toFixed(1) + ' km²'],
+    ['削山平整', a.cut.toFixed(1) + ' km²', b.cut.toFixed(1) + ' km²'],
+  ];
+  document.getElementById('metrics').innerHTML = rows.map(r => `<tr><th>${r[0]}</th><td class="cur">${r[1]}</td><td class="base">${r[2]}</td></tr>`).join('');
+  let v;
+  const obstacles = a.water + a.steep;
+  if (a.short > 0) v = `这块地装不下 ${S.pop} 万人，还差 ${(a.short / 100).toFixed(0)} km²。试试打开工程改造，或换一块地。`;
+  else if (a.round > 0.95 && a.holes < 0.02 && a.bridges === 0 && a.filled + a.cut === 0)
+    v = `<b>可以建成几乎完美的圆城。</b>这里没有挡路的河湖和陡坡，${S.pop} 万人的城市半径约 ${km(cur.Req * 0.1)} km，正圆就是最优解。`;
+  else if (S.alpha < 0.15) {
+    const cost = [a.bridges ? `${a.bridges} 座桥或堤` : '', a.filled ? `填水 ${a.filled.toFixed(1)} km²` : '', a.cut ? `削山 ${a.cut.toFixed(1)} km²` : ''].filter(Boolean).join('、');
+    v = `<b>坚持正圆，代价是 ${cost || '让出部分用地'}。</b>同面积的圆里有 ${pct(obstacles)} 是水面或陡坡${S.engineer ? '，已全部改造成建设用地。' : `，这些地方只能留空，城市边缘因此外推到 ${km(a.r99)} km（同面积正圆是 ${km(cur.Req * 0.1)} km）。`}`;
+  } else {
+    const dT = b.meanT - a.meanT;
+    v = `<b>顺应地形后，圆度降到 ${pct(a.round)}。</b>桥从 ${b.bridges} 座变成 ${a.bridges} 座，平均实际出行成本${dT >= 0 ? '少了' : '多了'} ${km(Math.abs(dT))} km（相对严格正圆）。`;
+  }
+  document.getElementById('verdict').innerHTML = v;
+}
+
+// ---------- 交互 ----------
+const ids = ['mount', 'lakes', 'rivers', 'pop', 'alpha'];
+const fmt = { mount: v => pct(v), lakes: v => v + ' 个', rivers: v => v + ' 条', pop: v => v + ' 万', alpha: v => v == 0 ? '0（正圆）' : (+v).toFixed(2) };
+function syncInputs() {
+  for (const k of ids) { document.getElementById(k).value = S[k]; document.getElementById(k + 'V').textContent = fmt[k](S[k]); }
+  document.getElementById('engineer').checked = S.engineer;
+  document.getElementById('refCircle').checked = S.ref;
+}
+function regrow() {
+  cur = grow(S.alpha);
+  base = S.alpha === 0 ? cur : grow(0);
+  report(); stopAnim(); render();
+}
+function full() { genTerrain(); snapCenter(); computeFields(); regrow(); }
+let pending = null;
+function schedule(fn) { pending = fn; requestAnimationFrame(() => { if (pending) { const f = pending; pending = null; f(); } }); }
+
+for (const k of ids) document.getElementById(k).addEventListener('input', e => {
+  S[k] = +e.target.value; document.getElementById(k + 'V').textContent = fmt[k](S[k]);
+  if (k === 'mount' || k === 'lakes' || k === 'rivers') schedule(full); else schedule(regrow);
+});
+document.getElementById('engineer').addEventListener('change', e => { S.engineer = e.target.checked; regrow(); });
+document.getElementById('refCircle').addEventListener('change', e => { S.ref = e.target.checked; render(); });
+document.getElementById('reseed').addEventListener('click', () => { seed = (Math.random() * 1e6) | 0; cx = cy = N >> 1; full(); });
+const PRESETS = {
+  plain: { mount: 0, lakes: 0, rivers: 0, riverCenter: false, alpha: 0 },
+  river: { mount: 0.1, lakes: 0, rivers: 1, riverCenter: true, alpha: 0 },
+  lakes: { mount: 0.05, lakes: 5, rivers: 1, riverCenter: false, alpha: 0 },
+  mountain: { mount: 0.65, lakes: 1, rivers: 1, riverCenter: false, alpha: 0 },
+};
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+  Object.assign(S, PRESETS[b.dataset.preset]); cx = cy = N >> 1; syncInputs(); full();
+}));
+function setCenter(x, y) {
+  cx = Math.max(0, Math.min(N - 1, x)); cy = Math.max(0, Math.min(N - 1, y));
+  snapCenter(); computeFields(); regrow();
+}
+cv.addEventListener('click', e => {
+  const r = cv.getBoundingClientRect();
+  setCenter(Math.floor((e.clientX - r.left) / r.width * N), Math.floor((e.clientY - r.top) / r.height * N));
+});
+cv.addEventListener('keydown', e => {
+  const d = { ArrowLeft: [-3, 0], ArrowRight: [3, 0], ArrowUp: [0, -3], ArrowDown: [0, 3] }[e.key];
+  if (d) { e.preventDefault(); setCenter(cx + d[0], cy + d[1]); }
+});
+function stopAnim() { if (anim) { cancelAnimationFrame(anim); anim = null; } }
+document.getElementById('play').addEventListener('click', () => {
+  stopAnim();
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { render(); return; }
+  const t0 = performance.now(), dur = 2400;
+  const step = now => {
+    const t = Math.min(1, (now - t0) / dur);
+    if (t < 1) { render(cur.A * (1 - Math.pow(1 - t, 2))); anim = requestAnimationFrame(step); } else { anim = null; render(); }
+  };
+  anim = requestAnimationFrame(step);
+});
+new ResizeObserver(() => { if (cur && !anim) render(); }).observe(cv);
+if (document.fonts) document.fonts.ready.then(() => cur && !anim && render());
+
+syncInputs(); full();
+})();
+</script>
